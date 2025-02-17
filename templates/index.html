@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Interface yt-dlp</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: #fff;
+      padding: 20px 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 400px;
+    }
+    h2 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 10px;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #218838;
+    }
+    .output {
+      margin-top: 20px;
+      text-align: center;
+      color: #333;
+    }
+    .output a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .output a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Télécharger une vidéo YouTube</h2>
+    <form id="downloadForm">
+      <label for="videoUrl">URL de la vidéo :</label>
+      <input type="text" id="videoUrl" name="videoUrl" placeholder="https://www.youtube.com/watch?v=...">
+
+      <label for="format">Format :</label>
+      <select id="format" name="format">
+        <option value="video">Vidéo (meilleure qualité)</option>
+        <option value="audio">Audio (mp3)</option>
+      </select>
+
+      <button type="submit">Télécharger</button>
+    </form>
+    <div class="output" id="output"></div>
+  </div>
+
+  <script>
+    document.getElementById('downloadForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const videoUrl = document.getElementById('videoUrl').value.trim();
+      const format = document.getElementById('format').value;
+      const outputDiv = document.getElementById('output');
+
+      if (!videoUrl) {
+        outputDiv.textContent = 'Veuillez entrer une URL valide.';
+        return;
+      }
+
+      outputDiv.textContent = 'Téléchargement en cours...';
+
+      // Appel vers le back-end pour exécuter yt-dlp
+      // Remplace '/download' par l'endpoint de ton serveur
+      fetch('/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url: videoUrl, format: format })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          outputDiv.innerHTML = 'Téléchargement réussi : <a href="' + data.downloadUrl + '">Télécharger le fichier</a>';
+        } else {
+          outputDiv.textContent = 'Erreur: ' + data.message;
+        }
+      })
+      .catch(error => {
+        console.error('Erreur:', error);
+        outputDiv.textContent = 'Erreur lors de la requête.';
+      });
+    });
+  </script>
+</body>
+</html>
