@@ -359,7 +359,7 @@
         }
       });
 
-      // Créer une option pour chaque résolution unique
+      // Créer une option pour chaque résolution unique pour la vidéo seule
       resolutions.forEach(resolution => {
         const formats = sortedVideoFormats.filter(f => {
           return (f.quality === resolution) || 
@@ -367,7 +367,7 @@
         });
         if (formats.length > 0) {
           const div = createFormatOption(formats[0], 'video');
-          div.dataset.format = formats[0].id;
+          div.dataset.format = `bv[height<=${parseInt(formats[0].resolution.split('x')[1])}]`;
           div.addEventListener('click', handleFormatSelection);
           videoContainer.appendChild(div);
         }
@@ -377,7 +377,7 @@
       const bothContainer = bothOptions.querySelector('.format-options');
       bothContainer.innerHTML = '';
       
-      // Ajouter les options fixes
+      // Ajouter l'option "Meilleure qualité"
       const bestOption = document.createElement('div');
       bestOption.className = 'sub-option';
       bestOption.dataset.format = 'bv*+ba/b';
@@ -389,6 +389,7 @@
       bestOption.addEventListener('click', handleFormatSelection);
       bothContainer.appendChild(bestOption);
 
+      // Ajouter l'option "Automatique"
       const autoOption = document.createElement('div');
       autoOption.className = 'sub-option';
       autoOption.dataset.format = 'b';
@@ -400,40 +401,46 @@
       autoOption.addEventListener('click', handleFormatSelection);
       bothContainer.appendChild(autoOption);
 
-      // Filtrer et regrouper les formats par résolution
-      const bothResolutions = new Set();
-      const sortedBothFormats = formats.both.sort((a, b) => {
-        const getHeight = (format) => {
-          if (format.resolution) {
-            return parseInt(format.resolution.split('x')[1]);
-          }
-          return 0;
-        };
-        return getHeight(b) - getHeight(a);
-      });
-
-      sortedBothFormats.forEach(format => {
-        if (format.quality) {
-          bothResolutions.add(format.quality);
-        } else if (format.resolution) {
-          const height = format.resolution.split('x')[1] + 'p';
-          bothResolutions.add(height);
-        }
-      });
-
-      // Créer une option pour chaque résolution unique
-      bothResolutions.forEach(resolution => {
-        const formats = sortedBothFormats.filter(f => {
+      // Utiliser les mêmes résolutions que la vidéo seule pour audio+vidéo
+      resolutions.forEach(resolution => {
+        const formats = sortedVideoFormats.filter(f => {
           return (f.quality === resolution) || 
                  (f.resolution && f.resolution.split('x')[1] + 'p' === resolution);
         });
         if (formats.length > 0) {
-          const div = createFormatOption(formats[0], 'both');
-          div.dataset.format = formats[0].id;
+          const div = document.createElement('div');
+          div.className = 'sub-option';
+          const height = parseInt(formats[0].resolution.split('x')[1]);
+          div.dataset.format = `bv*[height<=${height}]+ba/b`;
+          div.textContent = formats[0].resolution.split('x')[1] + 'p';
+          
+          // Tooltip
+          const tooltip = document.createElement('div');
+          tooltip.className = 'format-tooltip';
+          tooltip.innerHTML = `
+            Format: bv*[height<=${height}]+ba/b<br>
+            Résolution: ${formats[0].resolution}<br>
+            Description: Meilleure qualité vidéo ${height}p + meilleur audio
+          `;
+          div.appendChild(tooltip);
+          
           div.addEventListener('click', handleFormatSelection);
           bothContainer.appendChild(div);
         }
       });
+
+      // Afficher les options correspondant au type actuellement sélectionné
+      const selectedType = document.querySelector('.main-option.selected')?.dataset.type;
+      if (selectedType) {
+        hideAllSubOptions();
+        if (selectedType === 'audio') {
+          audioOptions.style.display = 'block';
+        } else if (selectedType === 'video') {
+          videoOptions.style.display = 'block';
+        } else if (selectedType === 'both') {
+          bothOptions.style.display = 'block';
+        }
+      }
     }
 
     // Gestion de la sélection du type principal
