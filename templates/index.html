@@ -3,6 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <title>Interface yt-dlp</title>
+  <!-- Script de rechargement automatique -->
+  <script>
+    // Fonction pour vérifier les modifications des fichiers
+    function checkForChanges() {
+      fetch('/check_changes')
+        .then(response => response.json())
+        .then(data => {
+          if (data.reload) {
+            window.location.reload();
+          }
+        })
+        .catch(error => console.error('Erreur de vérification:', error));
+    }
+
+    // Vérifier toutes les 2 secondes
+    setInterval(checkForChanges, 2000);
+  </script>
   <style>
     body {
       font-family: Arial, sans-serif;

@@ -6,8 +6,46 @@ from dotenv import load_dotenv
 import webbrowser
 import threading
 import time
+import hashlib
 
 app = Flask(__name__)
+
+# Variables pour suivre les modifications
+last_modified = {}
+template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+
+def get_file_hash(filepath):
+    """Calcule le hash d'un fichier pour détecter les modifications"""
+    if os.path.exists(filepath):
+        with open(filepath, 'rb') as f:
+            return hashlib.md5(f.read()).hexdigest()
+    return None
+
+def update_file_hashes():
+    """Met à jour les hashes des fichiers surveillés"""
+    files_to_watch = [
+        os.path.join(template_dir, 'index.html'),
+        __file__  # Le fichier back.py lui-même
+    ]
+    
+    for filepath in files_to_watch:
+        last_modified[filepath] = get_file_hash(filepath)
+
+# Initialiser les hashes
+update_file_hashes()
+
+@app.route('/check_changes')
+def check_changes():
+    """Vérifie si des fichiers ont été modifiés"""
+    changes_detected = False
+    
+    for filepath, old_hash in last_modified.items():
+        current_hash = get_file_hash(filepath)
+        if current_hash != old_hash:
+            changes_detected = True
+            last_modified[filepath] = current_hash
+    
+    return jsonify({'reload': changes_detected})
 
 # Dossier pour stocker les fichiers téléchargés
 DOWNLOAD_FOLDER = 'downloads'
@@ -153,6 +191,8 @@ def open_browser():
         print(f"Erreur lors de l'ouverture du navigateur : {e}")
 
 if __name__ == '__main__':
-    browser_thread = threading.Thread(target=open_browser, daemon=True)
-    browser_thread.start()
-    app.run(port=5000, debug=False)
+    # Vérifier si nous sommes dans le processus principal de Flask
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        browser_thread = threading.Thread(target=open_browser, daemon=True)
+        browser_thread.start()
+    app.run(port=5000, debug=True, use_reloader=True)
