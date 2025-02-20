@@ -38,20 +38,47 @@ def get_formats():
         output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode()
         
         # Parser la sortie pour extraire les formats
-        formats = []
+        formats = {
+            'video': [],
+            'audio': [],
+            'both': []
+        }
+        
         for line in output.split('\n'):
             if line and not line.startswith('['):
                 # Ignorer les lignes d'en-tête
                 if not line.startswith('ID') and not line.startswith('-'):
+                    # Exemple de ligne: "248 webm 1920x1080 1080p60 | 151MB"
                     parts = line.split()
                     if len(parts) >= 2:
                         format_id = parts[0]
-                        # Extraire la description du format
-                        desc = ' '.join(parts[1:])
-                        formats.append({
+                        format_info = ' '.join(parts[1:])
+                        
+                        format_data = {
                             'id': format_id,
-                            'description': desc
-                        })
+                            'description': format_info,
+                            'resolution': None,
+                            'filesize': None,
+                            'vcodec': None,
+                            'acodec': None
+                        }
+                        
+                        # Extraire la résolution si présente
+                        for part in parts:
+                            if 'x' in part and all(c.isdigit() or c == 'x' for c in part):
+                                format_data['resolution'] = part
+                            elif part.endswith('p'):
+                                format_data['quality'] = part
+                            elif 'MB' in part or 'GB' in part:
+                                format_data['filesize'] = part
+                        
+                        # Catégoriser le format
+                        if 'audio only' in format_info.lower():
+                            formats['audio'].append(format_data)
+                        elif 'video only' in format_info.lower():
+                            formats['video'].append(format_data)
+                        else:
+                            formats['both'].append(format_data)
         
         return jsonify({
             'success': True,

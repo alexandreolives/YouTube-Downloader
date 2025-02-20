@@ -65,7 +65,7 @@
       gap: 10px;
       justify-content: center;
     }
-    .format-option {
+    .format-option, .sub-option {
       padding: 15px 10px;
       background: #f8f9fa;
       border: 2px solid #e9ecef;
@@ -80,11 +80,12 @@
       align-items: center;
       justify-content: center;
       min-height: 30px;
+      position: relative;
     }
-    .format-option:hover {
+    .format-option:hover, .sub-option:hover {
       background: #e9ecef;
     }
-    .format-option.selected {
+    .format-option.selected, .sub-option.selected {
       background: #28a745;
       color: white;
       border-color: #28a745;
@@ -103,30 +104,34 @@
       gap: 10px;
       justify-content: center;
     }
-    .sub-option {
-      padding: 15px 10px;
-      background: #f0f0f0;
-      border: 2px solid #ddd;
-      border-radius: 6px;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.2s;
-      width: 40%;
-      min-width: unset;
-      flex: 0 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 30px;
-      font-size: 0.9em;
-    }
-    .sub-option:hover {
-      background: #e0e0e0;
-    }
-    .sub-option.selected {
-      background: #28a745;
+    .format-tooltip {
+      display: none;
+      position: absolute;
+      background: #333;
       color: white;
-      border-color: #28a745;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      z-index: 1000;
+      width: 200px;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .format-tooltip::before {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 0 5px 5px 5px;
+      border-style: solid;
+      border-color: transparent transparent #333 transparent;
+    }
+    .sub-option:hover .format-tooltip {
+      display: block;
     }
     button {
       display: block;
@@ -246,6 +251,7 @@
     const bothOptions = document.getElementById('bothOptions');
     let selectedFormat = null;
     let typingTimer;
+    let availableFormats = null;
 
     // Cache toutes les sous-options
     function hideAllSubOptions() {
@@ -269,39 +275,148 @@
       }
     });
 
-    async function checkVideo() {
-      const videoUrl = videoUrlInput.value.trim();
+    // Fonction pour créer une option de format avec tooltip
+    function createFormatOption(format, type) {
+      const div = document.createElement('div');
+      div.className = 'sub-option';
+      div.dataset.format = format.id;
       
-      if (!videoUrl) {
-        outputDiv.textContent = '';
-        return;
+      // Texte principal
+      let mainText = '';
+      if (format.quality) {
+        mainText = format.quality;
+      } else if (format.resolution) {
+        mainText = format.resolution;
+      } else {
+        mainText = 'Format ' + format.id;
       }
+      div.textContent = mainText;
 
-      try {
-        const response = await fetch('/get_formats', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ url: videoUrl })
-        });
+      // Tooltip
+      const tooltip = document.createElement('div');
+      tooltip.className = 'format-tooltip';
+      tooltip.innerHTML = `
+        ID: ${format.id}<br>
+        Résolution: ${format.resolution || 'N/A'}<br>
+        Taille: ${format.filesize || 'N/A'}<br>
+        ${format.description}
+      `;
+      div.appendChild(tooltip);
 
-        const data = await response.json();
-        
-        if (data.success) {
-          formatGroups.style.display = 'block';
-          outputDiv.textContent = 'Sélectionnez un format pour continuer';
-          downloadButton.disabled = !selectedFormat;
-        } else {
-          formatGroups.style.display = 'none';
-          outputDiv.textContent = 'Erreur: ' + data.message;
-          downloadButton.disabled = true;
+      return div;
+    }
+
+    // Fonction pour mettre à jour les options disponibles
+    function updateAvailableFormats(formats) {
+      // Mise à jour des options vidéo
+      const videoContainer = videoOptions.querySelector('.format-options');
+      videoContainer.innerHTML = '';
+      
+      // Ajouter l'option "Meilleure qualité"
+      const bestVideoOption = document.createElement('div');
+      bestVideoOption.className = 'sub-option';
+      bestVideoOption.dataset.format = 'bv';
+      bestVideoOption.textContent = 'Meilleure qualité';
+      bestVideoOption.addEventListener('click', handleFormatSelection);
+      videoContainer.appendChild(bestVideoOption);
+
+      // Trier les formats par qualité
+      const sortedVideoFormats = formats.video.sort((a, b) => {
+        const getHeight = (format) => {
+          if (format.resolution) {
+            return parseInt(format.resolution.split('x')[1]);
+          }
+          return 0;
+        };
+        return getHeight(b) - getHeight(a);
+      });
+
+      // Filtrer et regrouper les formats par résolution
+      const resolutions = new Set();
+      sortedVideoFormats.forEach(format => {
+        if (format.quality) {
+          resolutions.add(format.quality);
+        } else if (format.resolution) {
+          const height = format.resolution.split('x')[1] + 'p';
+          resolutions.add(height);
         }
-      } catch (error) {
-        console.error('Erreur:', error);
-        outputDiv.textContent = 'Erreur lors de la vérification de la vidéo';
-        downloadButton.disabled = true;
-      }
+      });
+
+      // Créer une option pour chaque résolution unique
+      resolutions.forEach(resolution => {
+        const formats = sortedVideoFormats.filter(f => {
+          return (f.quality === resolution) || 
+                 (f.resolution && f.resolution.split('x')[1] + 'p' === resolution);
+        });
+        if (formats.length > 0) {
+          const div = createFormatOption(formats[0], 'video');
+          div.dataset.format = formats[0].id;
+          div.addEventListener('click', handleFormatSelection);
+          videoContainer.appendChild(div);
+        }
+      });
+
+      // Mise à jour des options audio+vidéo
+      const bothContainer = bothOptions.querySelector('.format-options');
+      bothContainer.innerHTML = '';
+      
+      // Ajouter les options fixes
+      const bestOption = document.createElement('div');
+      bestOption.className = 'sub-option';
+      bestOption.dataset.format = 'bv*+ba/b';
+      bestOption.textContent = 'Meilleure qualité';
+      const bestTooltip = document.createElement('div');
+      bestTooltip.className = 'format-tooltip';
+      bestTooltip.innerHTML = 'Meilleure qualité disponible (peut être plus lent)';
+      bestOption.appendChild(bestTooltip);
+      bestOption.addEventListener('click', handleFormatSelection);
+      bothContainer.appendChild(bestOption);
+
+      const autoOption = document.createElement('div');
+      autoOption.className = 'sub-option';
+      autoOption.dataset.format = 'b';
+      autoOption.textContent = 'Automatique';
+      const autoTooltip = document.createElement('div');
+      autoTooltip.className = 'format-tooltip';
+      autoTooltip.innerHTML = 'Sélection automatique du meilleur format (recommandé)';
+      autoOption.appendChild(autoTooltip);
+      autoOption.addEventListener('click', handleFormatSelection);
+      bothContainer.appendChild(autoOption);
+
+      // Filtrer et regrouper les formats par résolution
+      const bothResolutions = new Set();
+      const sortedBothFormats = formats.both.sort((a, b) => {
+        const getHeight = (format) => {
+          if (format.resolution) {
+            return parseInt(format.resolution.split('x')[1]);
+          }
+          return 0;
+        };
+        return getHeight(b) - getHeight(a);
+      });
+
+      sortedBothFormats.forEach(format => {
+        if (format.quality) {
+          bothResolutions.add(format.quality);
+        } else if (format.resolution) {
+          const height = format.resolution.split('x')[1] + 'p';
+          bothResolutions.add(height);
+        }
+      });
+
+      // Créer une option pour chaque résolution unique
+      bothResolutions.forEach(resolution => {
+        const formats = sortedBothFormats.filter(f => {
+          return (f.quality === resolution) || 
+                 (f.resolution && f.resolution.split('x')[1] + 'p' === resolution);
+        });
+        if (formats.length > 0) {
+          const div = createFormatOption(formats[0], 'both');
+          div.dataset.format = formats[0].id;
+          div.addEventListener('click', handleFormatSelection);
+          bothContainer.appendChild(div);
+        }
+      });
     }
 
     // Gestion de la sélection du type principal
@@ -330,16 +445,52 @@
       });
     });
 
-    // Gestion de la sélection des sous-options
-    document.querySelectorAll('.sub-option').forEach(option => {
-      option.addEventListener('click', function() {
-        const parentOptions = this.closest('.sub-options');
-        parentOptions.querySelectorAll('.sub-option').forEach(opt => opt.classList.remove('selected'));
-        this.classList.add('selected');
-        selectedFormat = this.dataset.format;
-        downloadButton.disabled = false;
-      });
-    });
+    // Gestionnaire de sélection de format
+    function handleFormatSelection(event) {
+      const container = event.target.closest('.format-options');
+      container.querySelectorAll('.sub-option').forEach(opt => opt.classList.remove('selected'));
+      event.target.closest('.sub-option').classList.add('selected');
+      selectedFormat = event.target.closest('.sub-option').dataset.format;
+      downloadButton.disabled = false;
+    }
+
+    // Modification de la fonction checkVideo
+    async function checkVideo() {
+      const videoUrl = videoUrlInput.value.trim();
+      
+      if (!videoUrl) {
+        outputDiv.textContent = '';
+        return;
+      }
+
+      try {
+        const response = await fetch('/get_formats', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url: videoUrl })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          availableFormats = data.formats;
+          updateAvailableFormats(data.formats);
+          formatGroups.style.display = 'block';
+          outputDiv.textContent = 'Sélectionnez un format pour continuer';
+          downloadButton.disabled = !selectedFormat;
+        } else {
+          formatGroups.style.display = 'none';
+          outputDiv.textContent = 'Erreur: ' + data.message;
+          downloadButton.disabled = true;
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
+        outputDiv.textContent = 'Erreur lors de la vérification de la vidéo';
+        downloadButton.disabled = true;
+      }
+    }
 
     // Gestion du téléchargement
     document.getElementById('downloadForm').addEventListener('submit', async function(e) {
