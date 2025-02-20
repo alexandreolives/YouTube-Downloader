@@ -134,6 +134,17 @@ def download_video():
 def download_file(filename):
     return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
 
+@app.route('/delete_file/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    try:
+        file_path = os.path.join(DOWNLOAD_FOLDER, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return jsonify({'success': True, 'message': 'Fichier supprimé'})
+        return jsonify({'success': False, 'message': 'Fichier non trouvé'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 def open_browser():
     time.sleep(1.5)  # Attendre que Flask démarre
     try:

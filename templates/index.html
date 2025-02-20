@@ -518,7 +518,43 @@
         const data = await response.json();
         
         if (data.success) {
-          outputDiv.innerHTML = 'Téléchargement réussi : <a href="' + data.downloadUrl + '">Télécharger le fichier</a>';
+          const downloadUrl = data.downloadUrl;
+          const filename = downloadUrl.split('/').pop();
+
+          outputDiv.innerHTML = '<div class="loading"></div>Préparation du téléchargement...';
+          
+          // Télécharger le fichier avec fetch
+          const fileResponse = await fetch(downloadUrl);
+          const blob = await fileResponse.blob();
+          
+          // Créer un lien de téléchargement temporaire
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename; // Force le téléchargement au lieu d'ouvrir dans le navigateur
+          
+          // Supprimer le fichier du serveur
+          try {
+            const deleteResponse = await fetch(`/delete_file/${filename}`, { method: 'DELETE' });
+            const deleteResult = await deleteResponse.json();
+            if (deleteResult.success) {
+              console.log('Fichier supprimé avec succès du serveur');
+            } else {
+              console.error('Erreur lors de la suppression:', deleteResult.message);
+            }
+          } catch (error) {
+            console.error('Erreur lors de la suppression du fichier:', error);
+          }
+
+          // Déclencher le téléchargement
+          document.body.appendChild(link);
+          link.click();
+          
+          // Nettoyer
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          
+          outputDiv.textContent = 'Téléchargement terminé !';
         } else {
           outputDiv.textContent = 'Erreur: ' + data.message;
         }
