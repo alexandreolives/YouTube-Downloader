@@ -22,44 +22,159 @@
     }
     h2 {
       text-align: center;
+      color: #333;
+      margin-bottom: 25px;
+    }
+    .input-group {
+      margin-bottom: 20px;
     }
     label {
       display: block;
-      margin-top: 15px;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: bold;
     }
-    input[type="text"], select {
+    input[type="text"] {
       width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+      box-sizing: border-box;
+    }
+    input[type="text"]:focus {
+      border-color: #28a745;
+      outline: none;
+    }
+    .format-groups {
+      display: none;
+      margin-top: 20px;
+    }
+    .format-group {
+      margin-bottom: 15px;
+    }
+    .format-group label {
+      display: block;
+      margin-bottom: 10px;
+      color: #444;
+    }
+    .format-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .format-option {
+      padding: 15px 10px;
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      width: 40%;
+      min-width: unset;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+    }
+    .format-option:hover {
+      background: #e9ecef;
+    }
+    .format-option.selected {
+      background: #28a745;
+      color: white;
+      border-color: #28a745;
+    }
+    .sub-options {
+      display: none;
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+    .sub-options.visible {
+      display: grid;
+    }
+    .sub-options .format-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .sub-option {
+      padding: 15px 10px;
+      background: #f0f0f0;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      width: 40%;
+      min-width: unset;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      font-size: 0.9em;
+    }
+    .sub-option:hover {
+      background: #e0e0e0;
+    }
+    .sub-option.selected {
+      background: #28a745;
+      color: white;
+      border-color: #28a745;
     }
     button {
       display: block;
       width: 100%;
-      margin-top: 20px;
-      padding: 10px;
+      padding: 12px;
       background: #28a745;
       color: #fff;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 16px;
+      transition: background 0.3s;
+      margin-top: 30px;
     }
     button:hover {
       background: #218838;
     }
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+    }
     .output {
       margin-top: 20px;
       text-align: center;
-      color: #333;
+      color: #666;
     }
     .output a {
-      color: #007bff;
+      color: #28a745;
       text-decoration: none;
+      font-weight: bold;
     }
     .output a:hover {
       text-decoration: underline;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #28a745;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -67,56 +182,201 @@
   <div class="container">
     <h2>Télécharger une vidéo YouTube</h2>
     <form id="downloadForm">
-      <label for="videoUrl">URL de la vidéo :</label>
-      <input type="text" id="videoUrl" name="videoUrl" placeholder="https://www.youtube.com/watch?v=...">
+      <div class="input-group">
+        <label for="videoUrl">URL de la vidéo :</label>
+        <input type="text" id="videoUrl" name="videoUrl" placeholder="https://www.youtube.com/watch?v=...">
+      </div>
 
-      <label for="format">Format :</label>
-      <select id="format" name="format">
-        <option value="video">Vidéo (meilleure qualité)</option>
-        <option value="audio">Audio (mp3)</option>
-      </select>
+      <div id="formatGroups" class="format-groups">
+        <div class="format-group">
+          <label>Type de contenu :</label>
+          <div class="format-options">
+            <div class="format-option main-option" data-type="audio">Audio seul</div>
+            <div class="format-option main-option" data-type="video">Vidéo seule</div>
+            <div class="format-option main-option" data-type="both">Audio + Vidéo</div>
+          </div>
+        </div>
 
-      <button type="submit">Télécharger</button>
+        <!-- Options Audio -->
+        <div class="sub-options" id="audioOptions">
+          <label>Format audio :</label>
+          <div class="format-options">
+            <div class="sub-option" data-format="ba/b">Meilleure qualité</div>
+            <div class="sub-option" data-format="ba[ext=m4a]">M4A</div>
+            <div class="sub-option" data-format="ba[ext=mp3]">MP3</div>
+            <div class="sub-option" data-format="ba[ext=opus]">OPUS</div>
+          </div>
+        </div>
+
+        <!-- Options Vidéo -->
+        <div class="sub-options" id="videoOptions">
+          <label>Qualité vidéo :</label>
+          <div class="format-options">
+            <div class="sub-option" data-format="bv">Meilleure qualité</div>
+            <div class="sub-option" data-format="bv[height<=1080]">1080p</div>
+            <div class="sub-option" data-format="bv[height<=720]">720p</div>
+            <div class="sub-option" data-format="bv[height<=480]">480p</div>
+          </div>
+        </div>
+
+        <!-- Options Audio + Vidéo -->
+        <div class="sub-options" id="bothOptions">
+          <label>Qualité :</label>
+          <div class="format-options">
+            <div class="sub-option" data-format="bv*+ba/b">Meilleure qualité (plus lent)</div>
+            <div class="sub-option" data-format="bv*[height<=1080]+ba/b">1080p</div>
+            <div class="sub-option" data-format="bv*[height<=720]+ba/b">720p</div>
+            <div class="sub-option" data-format="b">Automatique (recommandé)</div>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" id="downloadButton" disabled>Télécharger</button>
     </form>
     <div class="output" id="output"></div>
   </div>
 
   <script>
-    document.getElementById('downloadForm').addEventListener('submit', function(e) {
-      e.preventDefault();
+    const videoUrlInput = document.getElementById('videoUrl');
+    const formatGroups = document.getElementById('formatGroups');
+    const downloadButton = document.getElementById('downloadButton');
+    const outputDiv = document.getElementById('output');
+    const audioOptions = document.getElementById('audioOptions');
+    const videoOptions = document.getElementById('videoOptions');
+    const bothOptions = document.getElementById('bothOptions');
+    let selectedFormat = null;
+    let typingTimer;
 
-      const videoUrl = document.getElementById('videoUrl').value.trim();
-      const format = document.getElementById('format').value;
-      const outputDiv = document.getElementById('output');
+    // Cache toutes les sous-options
+    function hideAllSubOptions() {
+      [audioOptions, videoOptions, bothOptions].forEach(el => {
+        el.style.display = 'none';
+      });
+    }
 
+    // Vérification automatique après la saisie
+    videoUrlInput.addEventListener('input', function() {
+      clearTimeout(typingTimer);
+      formatGroups.style.display = 'none';
+      hideAllSubOptions();
+      downloadButton.disabled = true;
+      
+      if (this.value.trim()) {
+        outputDiv.innerHTML = '<div class="loading"></div>Vérification de la vidéo...';
+        typingTimer = setTimeout(checkVideo, 1000);
+      } else {
+        outputDiv.textContent = '';
+      }
+    });
+
+    async function checkVideo() {
+      const videoUrl = videoUrlInput.value.trim();
+      
       if (!videoUrl) {
-        outputDiv.textContent = 'Veuillez entrer une URL valide.';
+        outputDiv.textContent = '';
         return;
       }
 
-      outputDiv.textContent = 'Téléchargement en cours...';
+      try {
+        const response = await fetch('/get_formats', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url: videoUrl })
+        });
 
-      // Appel vers le back-end pour exécuter yt-dlp
-      // Remplace '/download' par l'endpoint de ton serveur
-      fetch('/download', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ url: videoUrl, format: format })
-      })
-      .then(response => response.json())
-      .then(data => {
+        const data = await response.json();
+        
+        if (data.success) {
+          formatGroups.style.display = 'block';
+          outputDiv.textContent = 'Sélectionnez un format pour continuer';
+          downloadButton.disabled = !selectedFormat;
+        } else {
+          formatGroups.style.display = 'none';
+          outputDiv.textContent = 'Erreur: ' + data.message;
+          downloadButton.disabled = true;
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
+        outputDiv.textContent = 'Erreur lors de la vérification de la vidéo';
+        downloadButton.disabled = true;
+      }
+    }
+
+    // Gestion de la sélection du type principal
+    document.querySelectorAll('.main-option').forEach(option => {
+      option.addEventListener('click', function() {
+        document.querySelectorAll('.main-option').forEach(opt => opt.classList.remove('selected'));
+        this.classList.add('selected');
+        
+        hideAllSubOptions();
+        const type = this.dataset.type;
+        
+        // Afficher les options correspondantes
+        if (type === 'audio') {
+          audioOptions.style.display = 'block';
+        } else if (type === 'video') {
+          videoOptions.style.display = 'block';
+        } else if (type === 'both') {
+          bothOptions.style.display = 'block';
+        }
+        
+        selectedFormat = null;
+        downloadButton.disabled = true;
+        
+        // Réinitialiser la sélection des sous-options
+        document.querySelectorAll('.sub-option').forEach(opt => opt.classList.remove('selected'));
+      });
+    });
+
+    // Gestion de la sélection des sous-options
+    document.querySelectorAll('.sub-option').forEach(option => {
+      option.addEventListener('click', function() {
+        const parentOptions = this.closest('.sub-options');
+        parentOptions.querySelectorAll('.sub-option').forEach(opt => opt.classList.remove('selected'));
+        this.classList.add('selected');
+        selectedFormat = this.dataset.format;
+        downloadButton.disabled = false;
+      });
+    });
+
+    // Gestion du téléchargement
+    document.getElementById('downloadForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const videoUrl = videoUrlInput.value.trim();
+      
+      if (!videoUrl || !selectedFormat) {
+        outputDiv.textContent = 'Veuillez entrer une URL valide et sélectionner un format.';
+        return;
+      }
+
+      outputDiv.innerHTML = '<div class="loading"></div>Téléchargement en cours...';
+      downloadButton.disabled = true;
+
+      try {
+        const response = await fetch('/download', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url: videoUrl, format: selectedFormat })
+        });
+
+        const data = await response.json();
+        
         if (data.success) {
           outputDiv.innerHTML = 'Téléchargement réussi : <a href="' + data.downloadUrl + '">Télécharger le fichier</a>';
         } else {
           outputDiv.textContent = 'Erreur: ' + data.message;
         }
-      })
-      .catch(error => {
+      } catch (error) {
         console.error('Erreur:', error);
-        outputDiv.textContent = 'Erreur lors de la requête.';
-      });
+        outputDiv.textContent = 'Erreur lors du téléchargement';
+      } finally {
+        downloadButton.disabled = false;
+      }
     });
   </script>
 </body>

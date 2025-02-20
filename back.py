@@ -21,6 +21,48 @@ ffmpeg_location = os.getenv("FFMPEG_LOCATION")
 def index():
     return render_template('index.html')
 
+@app.route('/get_formats', methods=['POST'])
+def get_formats():
+    data = request.get_json()
+    if not data or 'url' not in data:
+        return jsonify({'success': False, 'message': 'URL requise'}), 400
+
+    video_url = data['url']
+    
+    try:
+        # Obtenir la liste des formats disponibles
+        command = [
+            'yt-dlp', '-F',
+            video_url
+        ]
+        output = subprocess.check_output(command, stderr=subprocess.STDOUT).decode()
+        
+        # Parser la sortie pour extraire les formats
+        formats = []
+        for line in output.split('\n'):
+            if line and not line.startswith('['):
+                # Ignorer les lignes d'en-tête
+                if not line.startswith('ID') and not line.startswith('-'):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        format_id = parts[0]
+                        # Extraire la description du format
+                        desc = ' '.join(parts[1:])
+                        formats.append({
+                            'id': format_id,
+                            'description': desc
+                        })
+        
+        return jsonify({
+            'success': True,
+            'formats': formats
+        })
+    except subprocess.CalledProcessError as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erreur lors de la récupération des formats : {e.output.decode()}'
+        }), 500
+
 @app.route('/download', methods=['POST'])
 def download_video():
     data = request.get_json()
@@ -28,36 +70,25 @@ def download_video():
         return jsonify({'success': False, 'message': 'Aucune donnée reçue'}), 400
 
     video_url = data.get('url')
-    format_type = data.get('format')
+    format_id = data.get('format')
 
-    if not video_url or not format_type:
+    if not video_url or not format_id:
         return jsonify({'success': False, 'message': 'L\'URL et le format sont requis'}), 400
 
     # Génère un identifiant unique pour nommer le fichier
     unique_id = str(uuid.uuid4())
-
-    # Définition du template de sortie en fonction du format choisi
-    if format_type == 'video':
-        # Télécharger la meilleure vidéo + audio, puis fusionner en mp4
-        output_template = os.path.join(DOWNLOAD_FOLDER, f'{unique_id}.%(ext)s')
-        command = [
-            'yt-dlp', '-f', 'bestvideo+bestaudio',
-            '--ffmpeg-location', ffmpeg_location,
-            '--merge-output-format', 'mp4',
-            '-o', output_template, video_url
-        ]
-    elif format_type == 'audio':
-        # Extraire l'audio et le convertir en mp3
-        output_template = os.path.join(DOWNLOAD_FOLDER, f'{unique_id}.%(ext)s')
-        command = [
-            'yt-dlp', '-x', '--audio-format', 'mp3',
-            '--ffmpeg-location', ffmpeg_location,
-            '-o', output_template, video_url
-        ]
-    else:
-        return jsonify({'success': False, 'message': 'Format invalide'}), 400
+    output_template = os.path.join(DOWNLOAD_FOLDER, f'{unique_id}.%(ext)s')
 
     try:
+        # Télécharger avec le format spécifié
+        command = [
+            'yt-dlp',
+            '-f', format_id,
+            '--ffmpeg-location', ffmpeg_location,
+            '-o', output_template,
+            video_url
+        ]
+        
         # Exécute la commande yt-dlp
         subprocess.check_output(command, stderr=subprocess.STDOUT)
         
