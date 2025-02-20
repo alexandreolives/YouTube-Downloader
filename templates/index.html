@@ -325,6 +325,57 @@
 
     // Fonction pour mettre à jour les options disponibles
     function updateAvailableFormats(formats) {
+      // Mise à jour des options audio
+      const audioContainer = audioOptions.querySelector('.format-options');
+      audioContainer.innerHTML = '';
+
+      // Ajouter l'option "Meilleure qualité"
+      const bestAudioOption = document.createElement('div');
+      bestAudioOption.className = 'sub-option';
+      bestAudioOption.dataset.format = 'ba/b';
+      bestAudioOption.textContent = 'Meilleure qualité';
+      bestAudioOption.addEventListener('click', handleFormatSelection);
+      audioContainer.appendChild(bestAudioOption);
+
+      // Trier les formats audio par qualité
+      const sortedAudioFormats = formats.audio.sort((a, b) => {
+        const getQuality = (format) => {
+          const match = format.description.match(/(\d+)kbps/);
+          return match ? parseInt(match[1]) : 0;
+        };
+        return getQuality(b) - getQuality(a);
+      });
+
+      // Créer un Set pour stocker les formats uniques
+      const audioFormats = new Set(['m4a', 'mp3', 'opus']);
+      
+      // Ajouter les options pour chaque format audio
+      audioFormats.forEach(format => {
+        const bestForFormat = sortedAudioFormats.find(f => 
+          f.description.toLowerCase().includes(format.toLowerCase())
+        );
+        
+        if (bestForFormat) {
+          const div = document.createElement('div');
+          div.className = 'sub-option';
+          div.dataset.format = `ba[ext=${format}]`;
+          div.textContent = format.toUpperCase();
+          
+          // Tooltip
+          const tooltip = document.createElement('div');
+          tooltip.className = 'format-tooltip';
+          tooltip.innerHTML = `
+            Format: ${format.toUpperCase()}<br>
+            Description: Meilleure qualité en ${format.toUpperCase()}<br>
+            ${bestForFormat.description}
+          `;
+          div.appendChild(tooltip);
+          
+          div.addEventListener('click', handleFormatSelection);
+          audioContainer.appendChild(div);
+        }
+      });
+
       // Mise à jour des options vidéo
       const videoContainer = videoOptions.querySelector('.format-options');
       videoContainer.innerHTML = '';
