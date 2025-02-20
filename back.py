@@ -146,13 +146,32 @@ def download_video():
 
     try:
         # Télécharger avec le format spécifié
-        command = [
-            'yt-dlp',
-            '-f', format_id,
+        command = ['yt-dlp']
+
+        # Cas spécial pour le MP3
+        if format_id == 'ba[ext=mp3]':
+            command.extend([
+                '--extract-audio',
+                '--audio-format', 'mp3',
+                '--audio-quality', '0'
+            ])
+        # Autres formats audio
+        elif 'ba[ext=' in format_id:
+            command.extend([
+                '--extract-audio',
+                '--audio-format', format_id.split('ext=')[1].rstrip(']'),
+                '--audio-quality', '0'
+            ])
+        # Formats vidéo ou combinés
+        else:
+            command.extend(['-f', format_id])
+
+        # Ajouter les options communes
+        command.extend([
             '--ffmpeg-location', ffmpeg_location,
             '-o', output_template,
             video_url
-        ]
+        ])
         
         # Exécute la commande yt-dlp
         subprocess.check_output(command, stderr=subprocess.STDOUT)
